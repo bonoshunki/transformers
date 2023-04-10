@@ -1422,8 +1422,9 @@ class Trainer:
         elif self.fsdp is not None:
             if not self.args.fsdp_config["xla"]:
                 # PyTorch FSDP!
-                from torch.distributed.fsdp.fully_sharded_data_parallel import CPUOffload, MixedPrecision
+                from torch.distributed.fsdp.fully_sharded_data_parallel import CPUOffload
                 from torch.distributed.fsdp.fully_sharded_data_parallel import FullyShardedDataParallel as FSDP
+                from torch.distributed.fsdp.fully_sharded_data_parallel import MixedPrecision
                 from torch.distributed.fsdp.wrap import size_based_auto_wrap_policy, transformer_auto_wrap_policy
 
                 if FSDPOption.OFFLOAD in self.args.fsdp:

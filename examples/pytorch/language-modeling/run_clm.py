@@ -435,7 +435,7 @@ def main():
         logger.info(f"Training new model from scratch - Total size={n_params/2**20:.2f}M params")
 
     # Hard Parameter-Sharing
-    model.lm_head = MultiOutputLayers(out_layer=model.lm_head, output_dims=5)
+    model.lm_head = MultiOutputLayers(out_layer=model.lm_head, output_nums=5)
 
     # We resize the embeddings only when necessary to avoid index errors. If you are creating a model from scratch
     # on a small vocab and want a smaller embedding size, remove this test.

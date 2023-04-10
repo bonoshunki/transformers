@@ -8,18 +8,18 @@ class MultiOutputLayers(nn.Module):
     def __init__(
         self,
         out_layer,
-        output_dims,
+        output_nums,
     ):
         super().__init__()
 
         self.task_nets = nn.ModuleList()
-        for _ in range(output_dims):
+        for _ in range(output_nums):
             self.task_nets.append(out_layer)
 
     def forward(self, x):
         res = []
 
-        for i in self.output_dims:
+        for i in self.output_nums:
             lm = self.task_nets[i](x[i, ...])
             res.append(lm)
 

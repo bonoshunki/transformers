@@ -1104,6 +1104,7 @@ class GPT2LMHeadModel(GPT2PreTrainedModel):
             # Flatten the tokens
             loss_fct = CrossEntropyLoss()
 
+            # 複数outputに対し、それぞれのoutputのlossを計算して足し算する
             dims = shift_labels.shape[0]
             loss = 0
             for i in range(dims):

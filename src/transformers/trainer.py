@@ -1875,6 +1875,11 @@ class Trainer:
 
             step = -1
             for step, inputs in enumerate(epoch_iterator):
+                # リストをfor文で取り出した場合0次元が要素1の配列になるので削除
+                inputs["input_ids"] = torch.squeeze(inputs["input_ids"], 0)
+                inputs["attention_mask"] = torch.squeeze(inputs["attention_mask"], 0)
+                inputs["labels"] = torch.squeeze(inputs["labels"], 0)
+
                 total_batched_samples += 1
                 if rng_to_sync:
                     self._load_rng_state(resume_from_checkpoint)
@@ -3109,6 +3114,11 @@ class Trainer:
         observed_num_examples = 0
         # Main evaluation loop
         for step, inputs in enumerate(dataloader):
+            # リストをfor文で取り出した場合0次元が要素1の配列になるので削除
+            inputs["input_ids"] = torch.squeeze(inputs["input_ids"], 0)
+            inputs["attention_mask"] = torch.squeeze(inputs["attention_mask"], 0)
+            inputs["labels"] = torch.squeeze(inputs["labels"], 0)
+
             # Update the observed num examples
             observed_batch_size = find_batch_size(inputs)
             if observed_batch_size is not None:

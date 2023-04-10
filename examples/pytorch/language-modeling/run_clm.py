@@ -32,9 +32,8 @@ from typing import Optional
 import datasets
 import evaluate
 import torch
-from datasets import load_dataset
-
 import transformers
+from datasets import load_dataset
 from transformers import (
     CONFIG_MAPPING,
     MODEL_FOR_CAUSAL_LM_MAPPING,
@@ -52,6 +51,8 @@ from transformers.testing_utils import CaptureLogger
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
+
+from .utils import MultiOutputLayers, split_dataset
 
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
@@ -403,6 +404,15 @@ def main():
             "You can do it from another script, save it, and load it from here, using --tokenizer_name."
         )
 
+    # MultiInputへと変更する
+    raw_datasets = raw_datasets.map(
+        lambda x: split_dataset(x, 5, tokenizer),
+        batched=True,
+        num_proc=data_args.preprocessing_num_workers,
+        load_from_cache_file=not data_args.overwrite_cache,
+        desc="Split Dataset into 5 parts",
+    )
+
     if model_args.model_name_or_path:
         torch_dtype = (
             model_args.torch_dtype
@@ -424,6 +434,9 @@ def main():
         n_params = sum({p.data_ptr(): p.numel() for p in model.parameters()}.values())
         logger.info(f"Training new model from scratch - Total size={n_params/2**20:.2f}M params")
 
+    # Hard Parameter-Sharing
+    model.lm_head = MultiOutputLayers(out_layer=model.lm_head)
+
     # We resize the embeddings only when necessary to avoid index errors. If you are creating a model from scratch
     # on a small vocab and want a smaller embedding size, remove this test.
     embedding_size = model.get_input_embeddings().weight.shape[0]
@@ -443,7 +456,13 @@ def main():
 
     def tokenize_function(examples):
         with CaptureLogger(tok_logger) as cl:
-            output = tokenizer(examples[text_column_name])
+            # MultiInputの場合は一気にTokenizeできないので、forで回す
+            output = {"input_ids": [], "attention_mask": []}
+            for example in examples[text_column_name]:
+                tokenized_example = tokenizer(example)
+                output["input_ids"].append(tokenized_example["input_ids"])
+                output["attention_mask"].append(tokenized_example["attention_mask"])
+
         # clm input could be much much longer than block_size
         if "Token indices sequence length is longer than the" in cl.out:
             tok_logger.warning(
@@ -488,18 +507,30 @@ def main():
 
     # Main data processing function that will concatenate all texts from our dataset and generate chunks of block_size.
     def group_texts(examples):
-        # Concatenate all texts.
-        concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
-        total_length = len(concatenated_examples[list(examples.keys())[0]])
-        # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
-        # customize this part to your needs.
-        if total_length >= block_size:
-            total_length = (total_length // block_size) * block_size
-        # Split by chunks of max_len.
-        result = {
-            k: [t[i : i + block_size] for i in range(0, total_length, block_size)]
-            for k, t in concatenated_examples.items()
-        }
+        result = {"input_ids": [], "attention_mask": []}
+        padding_token_id = tokenizer.pad_token_id
+
+        # input idsの拡張
+        # のちにtensorにする際に、MultiInputの形が揃っていないといけない
+        # block_sizeより大きい場合は切り取り、小さい場合はpad_tokenを足す
+        for input_id_list, attention_mask_list in zip(examples["input_ids"], examples["attention_mask"]):
+            new_input_id_list = []
+            new_attention_mask_list = []
+
+            for input_id, attention_mask in zip(input_id_list, attention_mask_list):
+                input_id_length = len(input_id)
+                if input_id_length < block_size:
+                    input_id.extend([padding_token_id] * (block_size - input_id_length))
+                    attention_mask.extend([1] * (block_size - input_id_length))
+                else:
+                    input_id = input_id[:block_size]
+                    attention_mask = attention_mask[:block_size]
+
+                new_input_id_list.append(input_id)
+                new_attention_mask_list.append(attention_mask)
+
+            result["input_ids"].append(new_input_id_list)
+            result["attention_mask"].append(new_attention_mask_list)
         result["labels"] = result["input_ids"].copy()
         return result
 

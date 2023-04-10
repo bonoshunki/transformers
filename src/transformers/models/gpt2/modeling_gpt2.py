@@ -1103,7 +1103,14 @@ class GPT2LMHeadModel(GPT2PreTrainedModel):
             shift_labels = labels[..., 1:].contiguous()
             # Flatten the tokens
             loss_fct = CrossEntropyLoss()
-            loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+
+            dims = shift_labels.shape[0]
+            loss = 0
+            for i in range(dims):
+                loss += loss_fct(
+                    shift_logits[i, ...].view(-1, shift_logits[i, ...].size(-1)),
+                    shift_labels[i, ...].view(-1),
+                )
 
         if not return_dict:
             output = (lm_logits,) + transformer_outputs[1:]

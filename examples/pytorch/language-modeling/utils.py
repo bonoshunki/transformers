@@ -13,6 +13,7 @@ class MultiOutputLayers(nn.Module):
         super().__init__()
 
         self.task_nets = nn.ModuleList()
+        self.output_nums = output_nums
         for _ in range(output_nums):
             self.task_nets.append(out_layer)
 

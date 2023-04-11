@@ -51,8 +51,7 @@ from transformers.testing_utils import CaptureLogger
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
-
-from .utils import MultiOutputLayers, split_dataset
+from utils import MultiOutputLayers, split_dataset
 
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.

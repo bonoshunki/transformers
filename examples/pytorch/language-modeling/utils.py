@@ -19,7 +19,7 @@ class MultiOutputLayers(nn.Module):
     def forward(self, x):
         res = []
 
-        for i in self.output_nums:
+        for i in range(self.output_nums):
             lm = self.task_nets[i](x[i, ...])
             res.append(lm)
 
@@ -40,7 +40,7 @@ def split_dataset(dataset, split_num, tokenizer):
         header = sep_token.join(t[:-split_num])
 
         new_t = []
-        for i in split_num:
+        for i in range(split_num):
             index = -split_num + i
             new_t.append(header + sep_token + t[index] + eos_token)
 

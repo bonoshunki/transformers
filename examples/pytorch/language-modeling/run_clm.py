@@ -209,6 +209,10 @@ class DataTrainingArguments:
     keep_linebreaks: bool = field(
         default=True, metadata={"help": "Whether to keep line breaks when using TXT files or not."}
     )
+    output_numbers: Optional[int] = field(
+        default=1,
+        metadata={"help": "The number of outputs."},
+    )
 
     def __post_init__(self):
         if self.streaming:
@@ -405,7 +409,7 @@ def main():
 
     # MultiInputへと変更する
     raw_datasets = raw_datasets.map(
-        lambda x: split_dataset(x, 5, tokenizer),
+        lambda x: split_dataset(x, data_args.output_numbers, tokenizer),
         batched=True,
         num_proc=data_args.preprocessing_num_workers,
         load_from_cache_file=not data_args.overwrite_cache,
@@ -434,7 +438,7 @@ def main():
         logger.info(f"Training new model from scratch - Total size={n_params/2**20:.2f}M params")
 
     # Hard Parameter-Sharing
-    model.lm_head = MultiOutputLayers(out_layer=model.lm_head, output_nums=5)
+    model.lm_head = MultiOutputLayers(out_layer=model.lm_head, output_nums=data_args.output_numbers)
 
     # We resize the embeddings only when necessary to avoid index errors. If you are creating a model from scratch
     # on a small vocab and want a smaller embedding size, remove this test.

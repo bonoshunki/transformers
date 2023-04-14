@@ -1104,14 +1104,18 @@ class GPT2LMHeadModel(GPT2PreTrainedModel):
             # Flatten the tokens
             loss_fct = CrossEntropyLoss()
 
-            # 複数outputに対し、それぞれのoutputのlossを計算して足し算する
-            dims = shift_labels.shape[0]
-            loss = 0
-            for i in range(dims):
-                loss += loss_fct(
-                    shift_logits[i, ...].view(-1, shift_logits[i, ...].size(-1)),
-                    shift_labels[i, ...].view(-1),
-                )
+            shape = shift_labels.shape
+            if len(shape) == 2:
+                loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+            else:
+                # 複数outputに対し、それぞれのoutputのlossを計算して足し算する
+                nums = shape[0]
+                loss = 0
+                for i in range(nums):
+                    loss += loss_fct(
+                        shift_logits[i, ...].view(-1, shift_logits[i, ...].size(-1)),
+                        shift_labels[i, ...].view(-1),
+                    )
 
         if not return_dict:
             output = (lm_logits,) + transformer_outputs[1:]

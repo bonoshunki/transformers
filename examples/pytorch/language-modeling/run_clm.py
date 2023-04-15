@@ -524,7 +524,7 @@ def main():
                 input_id_length = len(input_id)
                 if input_id_length < block_size:
                     input_id.extend([padding_token_id] * (block_size - input_id_length))
-                    attention_mask.extend([1] * (block_size - input_id_length))
+                    attention_mask.extend([0] * (block_size - input_id_length))
                 else:
                     input_id = input_id[:block_size]
                     attention_mask = attention_mask[:block_size]

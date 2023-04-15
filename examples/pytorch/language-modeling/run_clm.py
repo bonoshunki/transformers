@@ -510,30 +510,48 @@ def main():
 
     # Main data processing function that will concatenate all texts from our dataset and generate chunks of block_size.
     def group_texts(examples):
-        result = {"input_ids": [], "attention_mask": []}
-        padding_token_id = tokenizer.pad_token_id
+        # 2次元(出力が一つ)の場合は今まで通り
+        if data_args.output_numbers == 1:
+            # Concatenate all texts.
+            concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
+            total_length = len(concatenated_examples[list(examples.keys())[0]])
+            # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
+            # customize this part to your needs.
+            if total_length >= block_size:
+                total_length = (total_length // block_size) * block_size
+            # Split by chunks of max_len.
+            result = {
+                k: [t[i : i + block_size] for i in range(0, total_length, block_size)]
+                for k, t in concatenated_examples.items()
+            }
+        else:
+            result = {"input_ids": [], "attention_mask": []}
+            padding_token_id = tokenizer.pad_token_id
 
-        # input idsの拡張
-        # のちにtensorにする際に、MultiInputの形が揃っていないといけない
-        # block_sizeより大きい場合は切り取り、小さい場合はpad_tokenを足す
-        for input_id_list, attention_mask_list in zip(examples["input_ids"], examples["attention_mask"]):
-            new_input_id_list = []
-            new_attention_mask_list = []
+            # input idsの拡張
+            # のちにtensorにする際に、MultiInputの形が揃っていないといけない
+            # block_sizeより大きい場合は切り取り、小さい場合はpad_tokenを足す
+            for input_id_list, attention_mask_list in zip(examples["input_ids"], examples["attention_mask"]):
+                new_input_id_list = []
+                new_attention_mask_list = []
 
-            for input_id, attention_mask in zip(input_id_list, attention_mask_list):
-                input_id_length = len(input_id)
-                if input_id_length < block_size:
-                    input_id.extend([padding_token_id] * (block_size - input_id_length))
-                    attention_mask.extend([0] * (block_size - input_id_length))
-                else:
-                    input_id = input_id[:block_size]
-                    attention_mask = attention_mask[:block_size]
+                for input_id, attention_mask in zip(input_id_list, attention_mask_list):
+                    input_id_length = len(input_id)
+                    if input_id_length < block_size:
+                        input_id.extend([padding_token_id] * (block_size - input_id_length))
+                        attention_mask.extend([0] * (block_size - input_id_length))
+                    else:
+                        input_id = input_id[:block_size]
+                        attention_mask = attention_mask[:block_size]
 
-                new_input_id_list.append(input_id)
-                new_attention_mask_list.append(attention_mask)
+                    new_input_id_list.append(input_id)
+                    new_attention_mask_list.append(attention_mask)
 
-            result["input_ids"].append(new_input_id_list)
-            result["attention_mask"].append(new_attention_mask_list)
+                result["input_ids"].append(new_input_id_list)
+                result["attention_mask"].append(new_attention_mask_list)
+
+        # 正解ラベルはとりあえずinput_idsをコピーしておく
+        # これでGPT2の場合はinput_idsとのクロスエントロピーが計算されるので、自然な文章となる
         result["labels"] = result["input_ids"].copy()
         return result
 

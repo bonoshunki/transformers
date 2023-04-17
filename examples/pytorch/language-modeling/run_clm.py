@@ -407,6 +407,10 @@ def main():
             "You can do it from another script, save it, and load it from here, using --tokenizer_name."
         )
 
+    # Tokenを追加する
+    additional_special_tokens = {"additional_special_tokens": ["[COMMA]", "[EQUAL]"]}
+    tokenizer.add_special_tokens(additional_special_tokens)
+
     # MultiInputへと変更する
     raw_datasets = raw_datasets.map(
         lambda x: split_dataset(x, data_args.output_numbers, tokenizer),
@@ -437,14 +441,14 @@ def main():
         n_params = sum({p.data_ptr(): p.numel() for p in model.parameters()}.values())
         logger.info(f"Training new model from scratch - Total size={n_params/2**20:.2f}M params")
 
-    # Hard Parameter-Sharing
-    model.lm_head = MultiOutputLayers(out_layer=model.lm_head, output_nums=data_args.output_numbers)
-
     # We resize the embeddings only when necessary to avoid index errors. If you are creating a model from scratch
     # on a small vocab and want a smaller embedding size, remove this test.
     embedding_size = model.get_input_embeddings().weight.shape[0]
     if len(tokenizer) > embedding_size:
         model.resize_token_embeddings(len(tokenizer))
+
+    # Hard Parameter-Sharing
+    model.lm_head = MultiOutputLayers(out_layer=model.lm_head, output_nums=data_args.output_numbers)
 
     # Preprocessing the datasets.
     # First we tokenize all the texts.

@@ -408,7 +408,7 @@ def main():
         )
 
     # Tokenを追加する
-    additional_special_tokens = {"additional_special_tokens": ["[COMMA]", "[EQUAL]"]}
+    additional_special_tokens = {"additional_special_tokens": ["[COMMA]", "[EQUAL]", "[PROPER_NOUN]"]}
     tokenizer.add_special_tokens(additional_special_tokens)
 
     # MultiInputへと変更する

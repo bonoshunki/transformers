@@ -1106,15 +1106,16 @@ class GPT2LMHeadModel(GPT2PreTrainedModel):
 
             shape = shift_labels.shape
             if len(shape) == 2:
+                shift_logits = shift_logits.contiguous()
+                shift_labels = shift_labels.contiguous()
                 loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
             else:
-                # 複数outputに対し、それぞれのoutputのlossを計算して足し算する
-                nums = shape[0]
+                nums = shape[1]
                 loss = 0
                 for i in range(nums):
                     loss += loss_fct(
-                        shift_logits[i, ...].view(-1, shift_logits[i, ...].size(-1)),
-                        shift_labels[i, ...].view(-1),
+                        shift_logits[:, i, ...].contiguous().view(-1, shift_logits.size(-1)),
+                        shift_labels[:, i, ...].contiguous().view(-1),
                     )
 
         if not return_dict:

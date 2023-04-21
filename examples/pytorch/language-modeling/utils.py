@@ -1,3 +1,5 @@
+import copy
+
 import torch
 from torch import nn
 
@@ -15,16 +17,17 @@ class MultiOutputLayers(nn.Module):
         self.task_nets = nn.ModuleList()
         self.output_nums = output_nums
         for _ in range(output_nums):
-            self.task_nets.append(out_layer)
+            self.task_nets.append(copy.deepcopy(out_layer))
 
     def forward(self, x):
         res = []
 
         for i in range(self.output_nums):
-            lm = self.task_nets[i](x[i, ...])
+            lm = self.task_nets[i](x[..., i, :, :])
             res.append(lm)
 
-        res = torch.stack(res, dim=0)
+        res = torch.stack(res, dim=1)
+
         return res
 
 

@@ -1098,6 +1098,8 @@ class GPT2LMHeadModel(GPT2PreTrainedModel):
 
         loss = None
         if labels is not None:
+            # TODO:次元数による分岐を削除
+
             # Shift so that tokens < n predict n
             shift_logits = lm_logits[..., :-1, :].contiguous()
             shift_labels = labels[..., 1:].contiguous()
@@ -1105,10 +1107,29 @@ class GPT2LMHeadModel(GPT2PreTrainedModel):
             loss_fct = CrossEntropyLoss()
 
             shape = shift_labels.shape
+
+            # 制約のlossのための変数
+            label_len = shape[-1]
+            cm_token_id = 32000
+            eq_token_id = 32001
+            next_token_id = eq_token_id
+
             if len(shape) == 2:
+                # 再配置
                 shift_logits = shift_logits.contiguous()
                 shift_labels = shift_labels.contiguous()
+
+                # クロスエントロピー計算
                 loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+
+                # 追加の制約lossが必要かどうかを判定、追加
+                for i in range(label_len):
+                    input_id = input_ids[0, i]
+
+                    if input_id == next_token_id:
+                        # 必要だった場合、追加
+                        loss += nn.functional.softmax(lm_logits[i, :], dim=-1)[:, next_token_id - 1].item()
+                        next_token_id = cm_token_id if next_token_id == eq_token_id else eq_token_id
             else:
                 nums = shape[1]
                 loss = 0
@@ -1117,6 +1138,16 @@ class GPT2LMHeadModel(GPT2PreTrainedModel):
                         shift_logits[:, i, ...].contiguous().view(-1, shift_logits.size(-1)),
                         shift_labels[:, i, ...].contiguous().view(-1),
                     )
+
+                    for j in range(label_len):
+                        input_id = input_ids[0, j]
+
+                        if input_id == next_token_id:
+                            # 必要だった場合、追加
+                            loss += nn.functional.softmax(lm_logits[..., i, j, :], dim=-1)[
+                                ..., next_token_id - 1
+                            ].item()
+                            next_token_id = cm_token_id if next_token_id == eq_token_id else eq_token_id
 
         if not return_dict:
             output = (lm_logits,) + transformer_outputs[1:]

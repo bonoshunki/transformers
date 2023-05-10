@@ -447,6 +447,13 @@ def main():
     if len(tokenizer) > embedding_size:
         model.resize_token_embeddings(len(tokenizer))
 
+    # lm_head以外の重み更新を止める
+    for param in model.parameters():
+        param.requires_grad = False
+
+    for param in model.lm_head.parameters():
+        param.requires_grad = True
+
     # Hard Parameter-Sharing
     model.lm_head = MultiOutputLayers(out_layer=model.lm_head, output_nums=data_args.output_numbers)
 
